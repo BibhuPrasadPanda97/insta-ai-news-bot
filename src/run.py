@@ -54,7 +54,10 @@ def main():
         return
 
     import publish
-    urls = json.loads(os.environ["SLIDE_URLS"])   # set by the workflow after upload
+    import upload
+    paths = [f"{OUT}/slide_{k:02d}.jpg" for k in range(len(slides))]
+    urls = upload.slide_urls(paths)
+    print(f"slides hosted at {urls[0]} and {len(urls) - 1} more")
     media_id = publish.publish_carousel(urls, caption)
     print(f"published: {media_id}")
     publish.refresh_token()

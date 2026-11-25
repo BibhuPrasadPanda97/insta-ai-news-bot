@@ -11,7 +11,7 @@ on:
         default: false
 
 permissions:
-  contents: read
+  contents: write             # needed to push slides to the `slides` branch
 
 jobs:
   brief:
@@ -29,16 +29,32 @@ jobs:
       - name: Install Inter font
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y fonts-inter || true
+          sudo apt-get install -y fonts-inter || echo "falling back to DejaVu"
 
       - name: Build the brief
         env:
-          # WRITER=rules is free and needs no key. Set it to "claude" (and add the
-          # ANTHROPIC_API_KEY secret) for better-written headlines and bullets.
+          # WRITER=rules is free and needs no key. Set the repository variable to
+          # "claude" (and add ANTHROPIC_API_KEY) for better-written copy.
           WRITER: ${{ vars.WRITER || 'rules' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           IG_HANDLE: "@poweraidaily"
         run: python src/run.py
+
+      - name: Show the brief in the run summary
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          d = json.load(open("out/stories.json"))
+          print(f"## Brief for {d['date']}\n")
+          for i, s in enumerate(d["stories"], 1):
+              print(f"**{i}. {s['headline']}**  \n`{s['category']}` from [{s['source']}]({s['url']})\n")
+              for b in s["bullets"]:
+                  print(f"- {b}")
+              print()
+          print(f"\nCaption: {len(open('out/caption.txt').read())} characters")
+          EOF
+          echo "----- stories.json -----"
+          cat out/stories.json
 
       - name: Upload slides for review
         uses: actions/upload-artifact@v4
@@ -47,14 +63,38 @@ jobs:
           path: out/
           retention-days: 14
 
-      # Publishing stays off until the Instagram credentials are in place.
-      # Instagram fetches images from a public URL, so the slides are uploaded
-      # first and their URLs passed to the publish step.
+      # --- everything below runs only when publishing ---
+
+      - name: Host the slides on the slides branch
+        if: ${{ inputs.publish == true && vars.UPLOADER != 'imgbb' }}
+        id: host
+        run: |
+          set -euo pipefail
+          day=$(date -u +%Y-%m-%d)
+          tmp=$(mktemp -d)
+          git clone --depth 1 --branch slides "${{ github.server_url }}/${{ github.repository }}" "$tmp" \
+            || { git init "$tmp" && git -C "$tmp" checkout -b slides; }
+          mkdir -p "$tmp/$day"
+          cp out/slide_*.jpg "$tmp/$day/"
+          git -C "$tmp" -c user.email=actions@github.com -c user.name="GitHub Actions" \
+            add -A
+          git -C "$tmp" -c user.email=actions@github.com -c user.name="GitHub Actions" \
+            commit -m "slides for $day" || echo "nothing new"
+          git -C "$tmp" push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" slides
+          owner=$(echo "${{ github.repository }}" | cut -d/ -f1 | tr 'A-Z' 'a-z')
+          name=$(echo "${{ github.repository }}" | cut -d/ -f2)
+          echo "base=https://$owner.github.io/$name/$day" >> "$GITHUB_OUTPUT"
+
       - name: Publish to Instagram
         if: ${{ inputs.publish == true }}
         env:
+          WRITER: ${{ vars.WRITER || 'rules' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          IG_HANDLE: "@poweraidaily"
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
+          UPLOADER: ${{ vars.UPLOADER || 'gh_pages' }}
+          SLIDES_BASE_URL: ${{ steps.host.outputs.base }}
           PUBLISH: "1"
-        run: echo "wire image hosting, then call src/run.py with SLIDE_URLS"
+        run: python src/run.py
