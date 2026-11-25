@@ -35,7 +35,6 @@ Set these in Settings, Secrets and variables, Actions:
 | --- | --- |
 | `ANTHROPIC_API_KEY` | Only for `WRITER=claude`. Not needed by default |
 | `IG_ACCESS_TOKEN` | System-user access token from the business portfolio. Never expires |
-| `IMGBB_API_KEY` | Free imgbb key, used to host the slides. See below |
 | `IG_USER_ID` | Instagram professional account ID |
 | `META_APP_ID` | Meta app ID |
 | `META_APP_SECRET` | Meta app secret |
@@ -43,15 +42,13 @@ Set these in Settings, Secrets and variables, Actions:
 ## Slide hosting
 
 Instagram does not accept file uploads: it fetches each carousel image from a public
-HTTPS URL. `src/upload.py` has two backends.
+HTTPS URL. This repo is public, so the default backend is **gh_pages**: the workflow
+commits each day's slides to a `slides` branch and GitHub Pages serves them at
+`https://<owner>.github.io/<repo>/<date>/slide_NN.jpg`. No extra key needed.
 
-- **imgbb** (what this repo uses). Set `IMGBB_API_KEY` and the slides are posted to
-  api.imgbb.com at publish time. Works with a private repository and costs nothing.
-- **gh_pages**. The workflow commits the slides to a `slides` branch and GitHub Pages
-  serves them. Needs the repository to be public.
-
-The backend is chosen automatically: imgbb when `IMGBB_API_KEY` is set, otherwise
-gh_pages. Set the `UPLOADER` repository variable to force one.
+`src/upload.py` also has an **imgbb** backend (set `IMGBB_API_KEY` and the
+`UPLOADER=imgbb` repository variable) for anyone who runs this against a private repo
+instead.
 
 ## Local run
 

@@ -41,13 +41,8 @@ def _imgbb_urls(paths):
 BACKENDS = {"gh_pages": _gh_pages_urls, "imgbb": _imgbb_urls}
 
 
-def default_backend():
-    """imgbb whenever a key is configured, so a private repo works untouched."""
-    return "imgbb" if os.environ.get("IMGBB_API_KEY") else "gh_pages"
-
-
 def slide_urls(paths):
-    name = os.environ.get("UPLOADER") or default_backend()
+    name = os.environ.get("UPLOADER", "gh_pages")
     try:
         backend = BACKENDS[name]
     except KeyError:
