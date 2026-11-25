@@ -28,6 +28,9 @@ IMPORTANCE = [
     (4, r"partnership|partners with|teams up|deal\b"),
     (3, r"\b(gpt|claude|gemini|llama|grok|copilot)\b"),
     (-7, r"best |top \d|deals?\b|review|how to|opinion|why i |guide\b|roundup|vs\.?\b"),
+    (3, r"\bai\b|artificial intelligence|machine learning|neural|inference|data ?cent"),
+    (-5, r"harassment|discriminat|defamation|internal memo|employee sues|"
+         r"celebrity|royal|sports|film|movie|album"),
 ]
 
 BIG_NAMES = (r"OpenAI|Anthropic|Google|DeepMind|Microsoft|Meta|Apple|Amazon|AWS|Nvidia|"
@@ -45,9 +48,17 @@ JUNK = re.compile(r"best \d|top \d+|deals?\b|\bdeal of\b|review:|hands[- ]on|"
                   r"everything you need to know|what to know|we tried", re.I)
 
 
+# Subjects that do not belong on a tech-brief feed, whatever their news value.
+UNSUITABLE = re.compile(r"child (?:sex|abuse|porn)|csam|\bminors?\b.{0,20}(?:sex|abuse)|"
+                        r"sexual (?:harassment|assault|abuse)|rape|suicide|self[- ]harm|"
+                        r"porn|nudif|deepfake nude|shooting|killed|death of|dies\b|"
+                        r"terror|graphic violence", re.I)
+
+
 def is_junk(item):
-    """Listicles, reviews, deals and opinion pieces are not news."""
-    return bool(JUNK.search(item["title"]))
+    """Listicles, reviews, deals, opinion pieces and unsuitable subjects."""
+    text = f"{item['title']} {item['summary']}"
+    return bool(JUNK.search(item["title"]) or UNSUITABLE.search(text))
 
 
 def category(title, summary=""):
@@ -70,7 +81,11 @@ def score(item):
     return total
 
 
-def clean_headline(title, limit=75):
+DANGLING = {"the", "a", "an", "of", "to", "in", "on", "for", "with", "at", "by",
+            "from", "as", "and", "or", "its", "their", "that", "into", "over"}
+
+
+def clean_headline(title, limit=95):
     title = SITE_SUFFIX.sub("", title).strip().strip("—-– ")
     if len(title) <= limit:
         return title
@@ -84,13 +99,21 @@ def clean_headline(title, limit=75):
         if len(out) + len(w) + 1 > limit - 1:
             break
         out += (" " if out else "") + w
-    return out.rstrip(",;: ") + "…"
+    kept = out.rstrip(",;: ").split()
+    while kept and kept[-1].lower().strip(",;:") in DANGLING:
+        kept.pop()                                  # don't end on "the", "of", "with"
+    return " ".join(kept) + "…"
 
 
 def sentences(text):
     text = re.sub(r"\s+", " ", text or "").strip()
-    parts = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", text)
-    return [p.strip() for p in parts if len(p.strip()) > 25]
+    parts = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\"\u201c])|\s*;\s+", text)
+    out = []
+    for p in parts:
+        p = p.strip().strip("\u201c\u201d\"")     # a bare pull-quote reads as a fragment
+        if len(p) > 18:
+            out.append(p)
+    return out
 
 
 def bullets(item, limit=105):
