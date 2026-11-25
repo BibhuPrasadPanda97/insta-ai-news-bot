@@ -4,7 +4,10 @@ import time
 
 import requests
 
-GRAPH = "https://graph.instagram.com/v23.0"
+# The business-portfolio system-user token is a Facebook Graph token, so the
+# default host is graph.facebook.com. Set GRAPH_HOST=graph.instagram.com if the
+# token ever comes from the Instagram-login route instead.
+GRAPH = f"https://{os.environ.get('GRAPH_HOST', 'graph.facebook.com')}/v23.0"
 
 
 def _post(path, **params):
@@ -53,9 +56,6 @@ def publish_carousel(image_urls, caption):
 
 
 def refresh_token():
-    """Extend the long-lived token; run on every scheduled run."""
-    token = os.environ["IG_ACCESS_TOKEN"]
-    r = requests.get(f"{GRAPH}/refresh_access_token",
-                     params={"grant_type": "ig_refresh_token",
-                             "access_token": token}, timeout=30)
-    return r.json() if r.ok else None
+    """No-op. The system-user token never expires, so there is nothing to
+    refresh. Kept so callers on the old Instagram-login route still work."""
+    return None
