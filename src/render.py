@@ -109,10 +109,16 @@ def story_slide(s, i, n, date, handle, bg=None):
         y += step
     # accent underline
     d.rounded_rectangle([70, y + 10, 70 + 220, y + 24], 7, fill=a2); y += 70
-    # bullet cards (glass)
+    # bullet cards (glass), centred in the space left between headline and footer
     bf = F("Inter-SemiBold.otf", 38)
+    cards = []
     for b in s["bullets"][:3]:
-        lines = wrap(d, b, bf, W - 140 - 110)[:3]; hh = len(lines) * 50 + 44
+        lines = wrap(d, b, bf, W - 140 - 110)[:3]
+        cards.append((lines, len(lines) * 50 + 44))
+    block = sum(h for _, h in cards) + 22 * max(0, len(cards) - 1)
+    top, bottom = y, H - 190
+    y = max(top, top + (bottom - top - block) // 2)
+    for lines, hh in cards:
         card = Image.new("RGBA", (W, H), (0, 0, 0, 0)); cd = ImageDraw.Draw(card)
         cd.rounded_rectangle([70, y, W - 70, y + hh], 26, fill=(255, 255, 255, 30), outline=(255, 255, 255, 70), width=2)
         im.paste(card, (0, 0), card); d = ImageDraw.Draw(im)
