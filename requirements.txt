@@ -1,4 +1,6 @@
 feedparser==6.0.14
 requests==2.32.3
-anthropic==1.5.0
 Pillow==11.3.0
+
+# Only needed when WRITER=claude.
+anthropic==1.5.0

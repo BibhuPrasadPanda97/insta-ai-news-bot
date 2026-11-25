@@ -91,15 +91,22 @@ def story_slide(s, i, n, date, handle, bg=None):
     pill(d, 70, 70, s["category"].upper(), F("Inter-ExtraBold.otf", 28), a1)
     d.text((W - 70 - d.textlength(f"{i}/{n}", font=F("Inter-Bold.otf", 34)), 82), f"{i}/{n}", font=F("Inter-Bold.otf", 34), fill=(255, 255, 255, 200))
     # headline with highlighted key words
-    hf = F("Inter-Black.otf", 84); y = 230
+    # Shrink the headline until it fits in four lines rather than clipping it.
+    for size in (84, 76, 68, 60, 54):
+        hf = F("Inter-Black.otf", size)
+        lines = wrap(d, s["headline"].upper(), hf, W - 140)
+        if len(lines) <= 4:
+            break
+    step = int(hf.size * 1.17)
+    y = 230
     hl = set(w.lower().strip(".,:!?") for w in s.get("highlight", []))
-    for ln in wrap(d, s["headline"].upper(), hf, W - 140)[:4]:
+    for ln in lines:
         x = 70
         for w in ln.split():
             col = a1 if w.lower().strip(".,:!?") in hl else (255, 255, 255)
             shadow_text(im, (x, y), w, hf, col); d = ImageDraw.Draw(im)
             x += d.textlength(w + " ", font=hf)
-        y += 98
+        y += step
     # accent underline
     d.rounded_rectangle([70, y + 10, 70 + 220, y + 24], 7, fill=a2); y += 70
     # bullet cards (glass)

@@ -7,18 +7,30 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import fetch_news
 import render
-import write_stories
+from config import MIN_STORIES
 
 OUT = os.environ.get("OUT_DIR", "out")
+# "rules" needs no API key and costs nothing; "claude" writes better copy for a few
+# cents a run. See README.
+WRITER = os.environ.get("WRITER", "rules")
+
+
+def get_writer():
+    if WRITER == "claude":
+        import write_stories
+        return write_stories.write
+    import write_rules
+    return write_rules.write
 
 
 def main():
     items, day = fetch_news.fetch()
     print(f"{len(items)} deduplicated stories for {day}")
-    if len(items) < write_stories.MIN_STORIES:
+    if len(items) < MIN_STORIES:
         raise SystemExit(f"only {len(items)} stories found; not posting")
 
-    data = write_stories.write(items, day)
+    print(f"writer: {WRITER}")
+    data = get_writer()(items, day)
     os.makedirs(OUT, exist_ok=True)
     with open(f"{OUT}/stories.json", "w") as f:
         json.dump(data, f, indent=2)
