@@ -87,6 +87,19 @@ jobs:
           name=$(echo "${{ github.repository }}" | cut -d/ -f2)
           echo "base=https://$owner.github.io/$name/$day" >> "$GITHUB_OUTPUT"
 
+      - name: Wait for GitHub Pages to serve the new slides
+        if: ${{ (github.event_name == 'schedule' || inputs.publish == true) && vars.UPLOADER != 'imgbb' }}
+        run: |
+          set -euo pipefail
+          url="${{ steps.host.outputs.base }}/slide_00.jpg"
+          echo "waiting for $url"
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$url" || echo 000)
+            [ "$code" = "200" ] && { echo "up after $((i*10))s"; exit 0; }
+            sleep 10
+          done
+          echo "::warning::$url still not serving a 200 after 5 minutes; publish will likely fail"
+
       - name: Publish to Instagram
         if: ${{ github.event_name == 'schedule' || inputs.publish == true }}
         env:
