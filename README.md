@@ -24,8 +24,9 @@ A daily Instagram carousel of the previous day's biggest tech news, posted at 11
    script, never by an image model, so it is always spelled correctly.
 4. `publish.py` posts the carousel through the Instagram Graph API.
 
-Until `PUBLISH=1` is set, the run only drafts: slides and caption are uploaded as a build
-artifact for review and nothing is posted.
+The daily 11:00 IST scheduled run posts automatically. A manual run from the Actions tab
+(`workflow_dispatch`) defaults to a draft only — slides and caption are uploaded as a build
+artifact for review — unless its `publish` input is set to true.
 
 ## Secrets
 

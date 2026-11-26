@@ -63,10 +63,12 @@ jobs:
           path: out/
           retention-days: 14
 
-      # --- everything below runs only when publishing ---
+      # --- everything below runs on the daily schedule, or when manually
+      # dispatched with publish=true. A manual dispatch defaults to a draft
+      # only, so testing the pipeline never posts by accident. ---
 
       - name: Host the slides on the slides branch
-        if: ${{ inputs.publish == true && vars.UPLOADER != 'imgbb' }}
+        if: ${{ (github.event_name == 'schedule' || inputs.publish == true) && vars.UPLOADER != 'imgbb' }}
         id: host
         run: |
           set -euo pipefail
@@ -86,7 +88,7 @@ jobs:
           echo "base=https://$owner.github.io/$name/$day" >> "$GITHUB_OUTPUT"
 
       - name: Publish to Instagram
-        if: ${{ inputs.publish == true }}
+        if: ${{ github.event_name == 'schedule' || inputs.publish == true }}
         env:
           WRITER: ${{ vars.WRITER || 'rules' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
