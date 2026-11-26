@@ -158,11 +158,36 @@ def closing(handle):
     pill(d, 70, 960, f"FOLLOW {handle.upper()}", F("Inter-ExtraBold.otf", 34), a1)
     return im
 
+CAPTION_LIMIT = 2200
+
+
 def caption(stories, date, handle):
-    out = [f"TOP TECH NEWS | {date}\n"]
-    for i, s in enumerate(stories, 1): out.append(f"{i}. {s['headline']}\n{s['briefing']}\nSource: {s['source']}\n")
-    out.append(f"Follow {handle} for your daily tech + AI brief.\n\n#TechNews #AI #ArtificialIntelligence #Technology #GenAI #Startups")
-    c = "\n".join(out); assert len(c) <= 2200, len(c); return c
+    """Build the caption, trimming stories (never crashing) to fit Instagram's
+    2,200-character limit. A heavy news day keeps as many full story blocks as
+    fit, truncates the one that doesn't, and always keeps the header and the
+    follow/hashtags footer."""
+    header = f"TOP TECH NEWS | {date}\n"
+    footer = f"Follow {handle} for your daily tech + AI brief.\n\n#TechNews #AI #ArtificialIntelligence #Technology #GenAI #Startups"
+    budget = CAPTION_LIMIT - len(header) - len(footer) - 2  # 2 for the join newlines around footer
+
+    blocks, used = [], 0
+    for i, s in enumerate(stories, 1):
+        block = f"{i}. {s['headline']}\n{s['briefing']}\nSource: {s['source']}\n"
+        extra = len(block) + (1 if blocks else 0)  # +1 for the joining newline
+        if used + extra <= budget:
+            blocks.append(block)
+            used += extra
+            continue
+        # Doesn't fit whole: truncate this one block to what's left, then stop.
+        room = budget - used - (1 if blocks else 0)
+        if room > 40:  # only worth truncating if there's meaningful space left
+            cut = block[:room].rsplit(" ", 1)[0].rstrip(".,;: ") + "…"
+            blocks.append(cut)
+        break
+
+    c = "\n".join([header] + blocks + [footer])
+    assert len(c) <= CAPTION_LIMIT, len(c)
+    return c
 
 if __name__ == "__main__":
     data = json.load(open(sys.argv[1])); out = sys.argv[2]; os.makedirs(out, exist_ok=True)
